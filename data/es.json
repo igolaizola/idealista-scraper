@@ -66036,6 +66036,11 @@
   },
   {
     "type": "Provincia",
+    "name": "Andorra",
+    "id": "0-EU-ES-53"
+  },
+  {
+    "type": "Provincia",
     "name": "País Vasco Francés",
     "id": "0-EU-ES-54"
   },
