@@ -203,11 +203,23 @@
                 </tr>
             </tbody>
         </table>
+        <div id="pagination" style="display:none; margin-top: 12px; align-items: center; gap: 12px;">
+            <button id="prevPage" class="search-input" style="width:auto; padding: 8px 14px;">Previous</button>
+            <span id="pageInfo"></span>
+            <button id="nextPage" class="search-input" style="width:auto; padding: 8px 14px;">Next</button>
+        </div>
     </div>
 
     <script>
         let currentData = [];
+        let filteredData = [];
         let searchTimeout = null;
+        let currentPage = 1;
+        const pageSize = 100;
+        let requestId = 0;
+        let activeLoadController = null;
+        let loadVersion = 0;
+        const searchWorker = new Worker('search-worker.js');
 
         const elements = {
             countrySearch: document.getElementById('countrySearch'),
@@ -215,7 +227,11 @@
             nameSearch: document.getElementById('nameSearch'),
             idSearch: document.getElementById('idSearch'),
             tableBody: document.getElementById('tableBody'),
-            loadingOverlay: document.getElementById('loadingOverlay')
+            loadingOverlay: document.getElementById('loadingOverlay'),
+            pagination: document.getElementById('pagination'),
+            prevPage: document.getElementById('prevPage'),
+            nextPage: document.getElementById('nextPage'),
+            pageInfo: document.getElementById('pageInfo')
         };
 
         const typesByCountry = {
@@ -251,28 +267,27 @@
             elements.typeSearch.disabled = !enable;
         }
 
-        function filterAndRenderData() {
+        function renderCurrentPage() {
             const country = elements.countrySearch.value.toLowerCase();
-            const name = elements.nameSearch.value.toLowerCase();
-            const type = elements.typeSearch.value;
-            const id = elements.idSearch.value.toLowerCase();
 
             if (!country) {
+                elements.pagination.style.display = 'none';
                 elements.tableBody.innerHTML = '<tr><td colspan="4">Please select a country to view data</td></tr>';
-                hideLoading();
                 return;
             }
 
-            const filteredData = currentData.filter(item =>
-                item.name.toLowerCase().includes(name) &&
-                (!type || item.type === type) &&
-                item.id.toLowerCase().startsWith(id)
-            );
-
             if (filteredData.length === 0) {
+                elements.pagination.style.display = 'none';
                 elements.tableBody.innerHTML = '<tr><td colspan="4">No matching results found</td></tr>';
             } else {
-                elements.tableBody.innerHTML = filteredData.map(item => `
+                const totalPages = Math.ceil(filteredData.length / pageSize);
+                const safePage = Math.max(1, Math.min(currentPage, totalPages));
+                if (safePage !== currentPage) currentPage = safePage;
+
+                const start = (currentPage - 1) * pageSize;
+                const visibleItems = filteredData.slice(start, start + pageSize);
+
+                elements.tableBody.innerHTML = visibleItems.map(item => `
                     <tr>
                         <td>${country.toUpperCase()}</td>
                         <td>${item.type}</td>
@@ -280,9 +295,12 @@
                         <td><span class="id-cell" onclick="copyId('${item.id}', event)" title="Click to copy">${item.id}</span></td>
                     </tr>
                 `).join('');
-            }
 
-            hideLoading();
+                elements.pagination.style.display = 'flex';
+                elements.pageInfo.textContent = `Showing ${start + 1}-${Math.min(start + pageSize, filteredData.length)} of ${filteredData.length} (Page ${currentPage}/${totalPages})`;
+                elements.prevPage.disabled = currentPage === 1;
+                elements.nextPage.disabled = currentPage === totalPages;
+            }
         }
 
         function handleSearch() {
@@ -290,7 +308,26 @@
             if (searchTimeout) {
                 clearTimeout(searchTimeout);
             }
-            searchTimeout = setTimeout(filterAndRenderData, 300);
+            searchTimeout = setTimeout(() => {
+                const country = elements.countrySearch.value.toLowerCase();
+
+                if (!country) {
+                    filteredData = [];
+                    renderCurrentPage();
+                    hideLoading();
+                    return;
+                }
+
+                currentPage = 1;
+                requestId += 1;
+                searchWorker.postMessage({
+                    action: 'filter',
+                    requestId,
+                    name: elements.nameSearch.value.toLowerCase(),
+                    type: elements.typeSearch.value,
+                    id: elements.idSearch.value.toLowerCase()
+                });
+            }, 300);
         }
 
         async function copyId(id, event) {
@@ -313,16 +350,50 @@
         }
 
         async function loadCountryData(country) {
+            loadVersion += 1;
+            const currentLoadVersion = loadVersion;
+
+            if (activeLoadController) {
+                activeLoadController.abort();
+            }
+
+            activeLoadController = new AbortController();
             showLoading();
             try {
-                const response = await fetch(`data/${country}.json`);
+                const response = await fetch(`data/${country}.json`, { signal: activeLoadController.signal });
                 if (!response.ok) throw new Error(`Failed to load data for ${country}`);
-                currentData = await response.json();
-                filterAndRenderData();
+
+                if (currentLoadVersion !== loadVersion || elements.countrySearch.value !== country) {
+                    if (currentLoadVersion === loadVersion) {
+                        hideLoading();
+                    }
+                    return;
+                }
+
+                currentData = (await response.json()).map(item => ({
+                    ...item,
+                    name_lc: item.name.toLowerCase(),
+                    id_lc: item.id.toLowerCase()
+                }));
+                searchWorker.postMessage({ action: 'setData', data: currentData });
+                handleSearch();
             } catch (error) {
+                if (error.name === 'AbortError') {
+                    if (currentLoadVersion === loadVersion) {
+                        hideLoading();
+                    }
+                    return;
+                }
+
                 console.error('Error loading data:', error);
+                currentData = [];
+                filteredData = [];
+                searchWorker.postMessage({ action: 'setData', data: [] });
                 elements.tableBody.innerHTML = `<tr><td colspan="4">Error loading data for ${country}. Please try again.</td></tr>`;
-                hideLoading();
+                elements.pagination.style.display = 'none';
+                if (currentLoadVersion === loadVersion) {
+                    hideLoading();
+                }
             }
         }
 
@@ -337,14 +408,43 @@
                 if (country) {
                     await loadCountryData(country);
                 } else {
+                    loadVersion += 1;
+                    if (activeLoadController) {
+                        activeLoadController.abort();
+                        activeLoadController = null;
+                    }
                     currentData = [];
-                    filterAndRenderData();
+                    filteredData = [];
+                    searchWorker.postMessage({ action: 'setData', data: [] });
+                    renderCurrentPage();
                 }
             });
 
             elements.typeSearch.addEventListener('change', handleSearch);
             elements.nameSearch.addEventListener('input', handleSearch);
             elements.idSearch.addEventListener('input', handleSearch);
+
+            elements.prevPage.addEventListener('click', () => {
+                if (currentPage > 1) {
+                    currentPage -= 1;
+                    renderCurrentPage();
+                }
+            });
+
+            elements.nextPage.addEventListener('click', () => {
+                const totalPages = Math.ceil(filteredData.length / pageSize);
+                if (currentPage < totalPages) {
+                    currentPage += 1;
+                    renderCurrentPage();
+                }
+            });
+
+            searchWorker.onmessage = e => {
+                if (e.data.requestId !== requestId) return;
+                filteredData = e.data.results;
+                renderCurrentPage();
+                hideLoading();
+            };
         }
 
         init();
