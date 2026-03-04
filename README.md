@@ -1,6 +1,6 @@
 # Idealista Scraper
 
-You can use Idealista Scraper directly form APIFY platform [apify.com/igolaizola/idealista-scraper](https://apify.com/igolaizola/idealista-scraper)
+You can use Idealista Scraper directly form APIFY platform [apify.com/igolaizola/idealista-scraper](https://apify.com/igolaizola/idealista-scraper?fpr=ig)
 
 ## What does Idealista-Scraper do?
 
