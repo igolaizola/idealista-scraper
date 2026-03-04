@@ -66040,6 +66040,46 @@
     "id": "0-EU-ES-53"
   },
   {
+    "type": "Municipio",
+    "name": "Sant Julia de Loria, Andorra",
+    "id": "0-EU-ES-53-01-001-034"
+  },
+  {
+    "type": "Municipio",
+    "name": "Encamp, Andorra",
+    "id": "0-EU-ES-53-02-001-015"
+  },
+  {
+    "type": "Municipio",
+    "name": "La Massana, Andorra",
+    "id": "0-EU-ES-53-03-001-025"
+  },
+  {
+    "type": "Comarca",
+    "name": "Área de Canillo, Andorra",
+    "id": "0-EU-ES-53-04"
+  },
+  {
+    "type": "Municipio",
+    "name": "Canillo, Andorra",
+    "id": "0-EU-ES-53-04-001-011"
+  },
+  {
+    "type": "Municipio",
+    "name": "Ordino, Andorra",
+    "id": "0-EU-ES-53-05-001-028"
+  },
+  {
+    "type": "Municipio",
+    "name": "Andorra la Vella, Andorra",
+    "id": "0-EU-ES-53-06-001-003"
+  },
+  {
+    "type": "Municipio",
+    "name": "Escaldes-Engordany, Andorra",
+    "id": "0-EU-ES-53-07-001-017"
+  },
+  {
     "type": "Provincia",
     "name": "País Vasco Francés",
     "id": "0-EU-ES-54"
