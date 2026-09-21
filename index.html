@@ -165,7 +165,7 @@
         <h1>Idealista Scraper Location ID Search Tool</h1>
         <p>Find location IDs for the Idealista Scraper. Select a country and filter locations. Click any ID to copy it.
         </p>
-        <p>Access the scraper: <a href="https://apify.com/igolaizola/idealista-scraper" target="_blank">Idealista
+        <p>Access the scraper: <a href="https://apify.com/igolaizola/idealista-scraper?fpr=ig" target="_blank">Idealista
                 Scraper on Apify</a></p>
         <p>Created by <a href="https://x.com/igolaizola">@igolaizola</a></p>
     </div>
@@ -176,6 +176,7 @@
             <option value="es">Spain (ES)</option>
             <option value="pt">Portugal (PT)</option>
             <option value="it">Italy (IT)</option>
+            <option value="fr">France (FR)</option>
         </select>
         <select id="typeSearch" class="search-input" disabled>
             <option value="">All Types</option>
@@ -237,7 +238,12 @@
         const typesByCountry = {
             'es': ['Provincia', 'Municipio', 'Distrito', 'Comarca', 'Barrio'],
             'it': ['Provincia', 'Comune', 'Zona', 'Area', 'Subcomarca', 'Quartiere'],
-            'pt': ['Distrito', 'Concelho', 'Zona', 'Freguesia/Zona', 'Bairro']
+            'pt': ['Distrito', 'Concelho', 'Zona', 'Freguesia/Zona', 'Bairro'],
+            'fr': ['Départment', 'Arrondissements départamentales', 'Ville', 'Arrondissement', 'Quartier']
+        };
+        const typeLabels = {
+            'Départment': 'Département',
+            'Arrondissements départamentales': 'Arrondissements départementaux'
         };
 
         function showLoading() {
@@ -254,7 +260,7 @@
                 typesByCountry[country].forEach(type => {
                     const option = document.createElement('option');
                     option.value = type;
-                    option.textContent = type;
+                    option.textContent = typeLabels[type] || type;
                     elements.typeSearch.appendChild(option);
                 });
             }
